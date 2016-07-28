@@ -20,6 +20,7 @@ func newRoom() *room {
 	}
 }
 
+// ゴルーチンとしてバックグラウンドで実行する
 func (r *room) run() {
 	// 無限ループ
 	for {
@@ -51,21 +52,31 @@ const (
 	socketBufferSize = 1024
 	messageBufferSize = 256
 )
+
+// WebSocketを利用するためにはwebsocket.Upgrader型を用いてHTTP接続をアップグレードする必要がある！
 var upgrader = &websocket.Upgrader{ReadBufferSize:
 	socketBufferSize, WriteBufferSize: socketBufferSize}
+
+// チャットルーム型をレシーバにしてhttp.Handler型に適合させる！
 func (r *room) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	socket, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Fatal("ServeHTTP:", err)
 		return
 	}
+
+	// クライアントを生成して現在のチャットルームのjoinチャネルに渡す
 	client := &client{
 		socket: socket,
 		send: make(chan []byte, messageBufferSize),
 		room: r,
 	}
 	r.join <- client
+
+	// クライアントの終了時に退室処理を行う！
 	defer func() { r.leave <- client }()
+
+	// クライアントの書き込み処理をゴルーチンとして（別スレッド）実行！
 	go client.write()
 	client.read()
 }

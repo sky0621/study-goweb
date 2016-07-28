@@ -22,10 +22,14 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main(){
+	// 新しいチャットルームを作る
 	r := newRoom()
+	// ルートアクセスされたら char.html を表示するようハンドリング
 	http.Handle("/", &templateHandler{filename: "chat.html"})
+	// 
 	http.Handle("/room")
 
+	// ゴルーチンでチャットルームを起動する
 	go r.run()
 
 	err := http.ListenAndServe(":5050", nil)
